@@ -26,4 +26,9 @@ jobs:
         template: './arm-template/ARMTemplateForFactory.json'
         parameters: './arm-template/ARMTemplateParametersForFactory.json'
         deploymentName: 'adf-deployment'
-
+        
+    - name: Upload ARM Template Artifact
+      uses: actions/upload-artifact@v3
+      with:
+         name: arm-template
+         path: './arm-template/ARMTemplateForFactory.json'
