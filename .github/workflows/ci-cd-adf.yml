@@ -22,8 +22,8 @@ jobs:
       uses: Azure/arm-deploy@v1
       with:
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        resourceGroupName: 'your-resource-group'
-        template: './arm-template/azuredeploy.json'
-        parameters: './arm-template/azuredeploy.parameters.json'
+        resourceGroupName: 'covid-reporting-rg'
+        template: './arm-template/ARMTemplateForFactory.json'
+        parameters: './arm-template/ARMTemplateParametersForFactory.json'
         deploymentName: 'adf-deployment'
 
