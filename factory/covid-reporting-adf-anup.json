@@ -1,0 +1,9 @@
+{
+	"name": "covid-reporting-adf-anup",
+	"location": "northeurope",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "81e7a353-6afb-46e0-a591-15597c888ea7",
+		"tenantId": "88a43b7e-a5c2-4481-a58d-f031119e091f"
+	}
+}
