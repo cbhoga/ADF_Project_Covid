@@ -179,6 +179,7 @@
                     },
                     {
                         "name": "Execute Process Population Data",
+                        "description": "This is to test cicd by chandu-chandu-thirdbranch-cicd-test",
                         "type": "ExecutePipeline",
                         "dependsOn": [
                             {
@@ -270,7 +271,7 @@
             "apiVersion": "2018-06-01",
             "properties": {
                 "annotations": [],
-                "runtimeState": "Started",
+                "runtimeState": "Stopped",
                 "pipelines": [
                     {
                         "pipelineReference": {
@@ -298,7 +299,7 @@
             "apiVersion": "2018-06-01",
             "properties": {
                 "annotations": [],
-                "runtimeState": "Started",
+                "runtimeState": "Stopped",
                 "pipelines": [
                     {
                         "pipelineReference": {
@@ -357,7 +358,7 @@
             "apiVersion": "2018-06-01",
             "properties": {
                 "annotations": [],
-                "runtimeState": "Started",
+                "runtimeState": "Stopped",
                 "pipelines": [
                     {
                         "pipelineReference": {
