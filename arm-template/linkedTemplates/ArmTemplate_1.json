@@ -1,0 +1,385 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "covid-reporting-adf-anup"
+        },
+        "tr_ingest_hospital_admissions_data_properties_pl_ingest_ecdc_data_parameters_sourceRelativeURL": {
+            "type": "string",
+            "defaultValue": "covid19/hospitalicuadmissionrates/csv/data.csv"
+        },
+        "tr_ingest_hospital_admissions_data_properties_pl_ingest_ecdc_data_parameters_sinkFileName": {
+            "type": "string",
+            "defaultValue": "hospital_admissions.csv"
+        },
+        "trigger3_properties_typeProperties_scope": {
+            "type": "string",
+            "defaultValue": "/subscriptions/b99b1a19-5347-4356-b2ec-eaf255b87829/resourceGroups/covid-reporting-rg/providers/Microsoft.Storage/storageAccounts/covidreportinganusa"
+        },
+        "tr_ingest_population_data_properties_typeProperties_scope": {
+            "type": "string",
+            "defaultValue": "/subscriptions/b99b1a19-5347-4356-b2ec-eaf255b87829/resourceGroups/covid-reporting-rg/providers/Microsoft.Storage/storageAccounts/covidreportinganusa"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/df_transform_cases_deaths')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "ds_raw_cases_and_deaths",
+                                "type": "DatasetReference"
+                            },
+                            "name": "CasesAndDeathsSource"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "ds_country_lookup",
+                                "type": "DatasetReference"
+                            },
+                            "name": "Countrylookup"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "ds_processed_cases_and_deaths",
+                                "type": "DatasetReference"
+                            },
+                            "name": "CaseAndDeathSink"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "FilterEuropeOnly"
+                        },
+                        {
+                            "name": "SelectOnlyRequiredFields"
+                        },
+                        {
+                            "name": "PivotCOunts"
+                        },
+                        {
+                            "name": "lookupcountry"
+                        },
+                        {
+                            "name": "selectforsink"
+                        }
+                    ],
+                    "scriptLines": [
+                        "source(output(",
+                        "          country as string,",
+                        "          country_code as string,",
+                        "          continent as string,",
+                        "          population as integer,",
+                        "          indicator as string,",
+                        "          daily_count as integer,",
+                        "          date as date,",
+                        "          rate_14_day as double,",
+                        "          source as string",
+                        "     ),",
+                        "     allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false) ~> CasesAndDeathsSource",
+                        "source(output(",
+                        "          country as string,",
+                        "          country_code_2_digit as string,",
+                        "          country_code_3_digit as string,",
+                        "          continent as string,",
+                        "          population as integer",
+                        "     ),",
+                        "     allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false) ~> Countrylookup",
+                        "CasesAndDeathsSource filter(continent == 'Europe' && not(isNull(country_code))) ~> FilterEuropeOnly",
+                        "FilterEuropeOnly select(mapColumn(",
+                        "          country,",
+                        "          country_code,",
+                        "          population,",
+                        "          indicator,",
+                        "          daily_count,",
+                        "          source,",
+                        "          each(match(name=='date'),",
+                        "               'reported'+'_date' = $$)",
+                        "     ),",
+                        "     skipDuplicateMapInputs: false,",
+                        "     skipDuplicateMapOutputs: true) ~> SelectOnlyRequiredFields",
+                        "SelectOnlyRequiredFields pivot(groupBy(country,",
+                        "          country_code,",
+                        "          population,",
+                        "          source,",
+                        "          reported_date),",
+                        "     pivotBy(indicator, ['confirmed cases', 'deaths']),",
+                        "     count = sum(daily_count),",
+                        "     columnNaming: '$V_$N',",
+                        "     lateral: true) ~> PivotCOunts",
+                        "PivotCOunts, Countrylookup lookup(PivotCOunts@country == Countrylookup@country,",
+                        "     multiple: false,",
+                        "     pickup: 'any',",
+                        "     broadcast: 'auto')~> lookupcountry",
+                        "lookupcountry select(mapColumn(",
+                        "          country = PivotCOunts@country,",
+                        "          country_code_2_digit,",
+                        "          country_code_3_digit,",
+                        "          population = PivotCOunts@population,",
+                        "          {confirmed cases_count},",
+                        "          deaths_count,",
+                        "          reported_date,",
+                        "          source",
+                        "     ),",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true) ~> selectforsink",
+                        "selectforsink sink(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     truncate: true,",
+                        "     umask: 0022,",
+                        "     preCommands: [],",
+                        "     postCommands: [],",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true) ~> CaseAndDeathSink"
+                    ]
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/pl_execute_population_pipelines')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Execute Ingest Population Data",
+                        "description": "This is execute pipeline. Description added by chandu.",
+                        "type": "ExecutePipeline",
+                        "dependsOn": [],
+                        "policy": {
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "pipeline": {
+                                "referenceName": "pl_ingest_population_data",
+                                "type": "PipelineReference"
+                            },
+                            "waitOnCompletion": true,
+                            "parameters": {}
+                        }
+                    },
+                    {
+                        "name": "Execute Process Population Data",
+                        "type": "ExecutePipeline",
+                        "dependsOn": [
+                            {
+                                "activity": "Execute Ingest Population Data",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "pipeline": {
+                                "referenceName": "pl_process_population_data",
+                                "type": "PipelineReference"
+                            },
+                            "waitOnCompletion": true,
+                            "parameters": {}
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "folder": {
+                    "name": "Execute"
+                },
+                "annotations": [],
+                "lastPublishTime": "2024-10-15T17:25:34Z"
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/pl_process_cases_and_deaths')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "df_transform_cases_deaths",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "df_transform_cases_deaths",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "CasesAndDeathsSource": {},
+                                    "Countrylookup": {},
+                                    "CaseAndDeathSink": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            },
+                            "traceLevel": "Fine"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "folder": {
+                    "name": "Process"
+                },
+                "annotations": [],
+                "lastPublishTime": "2024-10-15T17:25:33Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/dataflows/df_transform_cases_deaths')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/tr_ingest_ecdc_data')]",
+            "type": "Microsoft.DataFactory/factories/triggers",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "runtimeState": "Started",
+                "pipelines": [
+                    {
+                        "pipelineReference": {
+                            "referenceName": "pl_ingest_ecdc_data_list",
+                            "type": "PipelineReference"
+                        },
+                        "parameters": {}
+                    }
+                ],
+                "type": "ScheduleTrigger",
+                "typeProperties": {
+                    "recurrence": {
+                        "frequency": "Day",
+                        "interval": 1,
+                        "startTime": "2024-10-07T21:16:00",
+                        "timeZone": "W. Europe Standard Time"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/tr_ingest_hospital_admissions_data')]",
+            "type": "Microsoft.DataFactory/factories/triggers",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "runtimeState": "Started",
+                "pipelines": [
+                    {
+                        "pipelineReference": {
+                            "referenceName": "pl_ingest_ecdc_data",
+                            "type": "PipelineReference"
+                        },
+                        "parameters": {
+                            "sourceRelativeURL": "[parameters('tr_ingest_hospital_admissions_data_properties_pl_ingest_ecdc_data_parameters_sourceRelativeURL')]",
+                            "sinkFileName": "[parameters('tr_ingest_hospital_admissions_data_properties_pl_ingest_ecdc_data_parameters_sinkFileName')]"
+                        }
+                    }
+                ],
+                "type": "ScheduleTrigger",
+                "typeProperties": {
+                    "recurrence": {
+                        "frequency": "Day",
+                        "interval": 1,
+                        "startTime": "2024-10-08T20:15:00",
+                        "timeZone": "W. Europe Standard Time"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/trigger3')]",
+            "type": "Microsoft.DataFactory/factories/triggers",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "runtimeState": "Stopped",
+                "pipelines": [
+                    {
+                        "pipelineReference": {
+                            "referenceName": "pl_ingest_population_data",
+                            "type": "PipelineReference"
+                        },
+                        "parameters": {}
+                    }
+                ],
+                "type": "BlobEventsTrigger",
+                "typeProperties": {
+                    "blobPathBeginsWith": "/population/blobs/population_by_age.tsv.gz",
+                    "ignoreEmptyBlobs": true,
+                    "scope": "[parameters('trigger3_properties_typeProperties_scope')]",
+                    "events": [
+                        "Microsoft.Storage.BlobCreated"
+                    ]
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/tr_ingest_population_data')]",
+            "type": "Microsoft.DataFactory/factories/triggers",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "runtimeState": "Started",
+                "pipelines": [
+                    {
+                        "pipelineReference": {
+                            "referenceName": "pl_execute_population_pipelines",
+                            "type": "PipelineReference"
+                        },
+                        "parameters": {}
+                    }
+                ],
+                "type": "BlobEventsTrigger",
+                "typeProperties": {
+                    "blobPathBeginsWith": "/population/blobs/population_by_age.tsv.gz",
+                    "ignoreEmptyBlobs": true,
+                    "scope": "[parameters('tr_ingest_population_data_properties_typeProperties_scope')]",
+                    "events": [
+                        "Microsoft.Storage.BlobCreated"
+                    ]
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/pipelines/pl_execute_population_pipelines')]"
+            ]
+        }
+    ]
+}
