@@ -1,0 +1,51 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "value": "covid-reporting-adf-anup"
+        },
+        "ls_adls_covidreporting_accountKey": {
+            "value": ""
+        },
+        "ls_blob_covidreportingsa_connectionString": {
+            "value": ""
+        },
+        "ls_db_covid_cluster_accessToken": {
+            "value": ""
+        },
+        "ls_db_covid_cluster_anu_accessToken": {
+            "value": ""
+        },
+        "ls_sql_covid_db_password": {
+            "value": ""
+        },
+        "ls_adls_covidreporting_properties_typeProperties_url": {
+            "value": "https://covidreportingsaadls.dfs.core.windows.net/"
+        },
+        "ls_http_opendata_europe_properties_typeProperties_url": {
+            "value": "@{linkedService().sourceBaseURL}"
+        },
+        "ls_sql_covid_db_properties_typeProperties_server": {
+            "value": "covid-reporting-ss.database.windows.net"
+        },
+        "ls_sql_covid_db_properties_typeProperties_database": {
+            "value": "covid-db-anu"
+        },
+        "ls_sql_covid_db_properties_typeProperties_userName": {
+            "value": "admin_anu"
+        },
+        "tr_ingest_hospital_admissions_data_properties_pl_ingest_ecdc_data_parameters_sourceRelativeURL": {
+            "value": "covid19/hospitalicuadmissionrates/csv/data.csv"
+        },
+        "tr_ingest_hospital_admissions_data_properties_pl_ingest_ecdc_data_parameters_sinkFileName": {
+            "value": "hospital_admissions.csv"
+        },
+        "tr_ingest_population_data_properties_typeProperties_scope": {
+            "value": "/subscriptions/b99b1a19-5347-4356-b2ec-eaf255b87829/resourceGroups/covid-reporting-rg/providers/Microsoft.Storage/storageAccounts/covidreportinganusa"
+        },
+        "trigger3_properties_typeProperties_scope": {
+            "value": "/subscriptions/b99b1a19-5347-4356-b2ec-eaf255b87829/resourceGroups/covid-reporting-rg/providers/Microsoft.Storage/storageAccounts/covidreportinganusa"
+        }
+    }
+}
