@@ -4,6 +4,7 @@
 		"activities": [
 			{
 				"name": "Execute Ingest Population Data",
+				"description": "This is execute pipeline. Description added by chandu.",
 				"type": "ExecutePipeline",
 				"dependsOn": [],
 				"policy": {
