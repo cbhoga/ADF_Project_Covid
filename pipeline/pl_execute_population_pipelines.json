@@ -21,6 +21,7 @@
 			},
 			{
 				"name": "Execute Process Population Data",
+				"description": "This is to test cicd by chandu",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
