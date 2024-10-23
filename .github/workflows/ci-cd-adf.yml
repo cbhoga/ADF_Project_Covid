@@ -1,0 +1,29 @@
+name: covid-reporting-adf-anup
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-adf:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: 'Azure Login'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy ADF resources
+      uses: Azure/arm-deploy@v1
+      with:
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        resourceGroupName: 'your-resource-group'
+        template: './arm-template/azuredeploy.json'
+        parameters: './arm-template/azuredeploy.parameters.json'
+        deploymentName: 'adf-deployment'
+
